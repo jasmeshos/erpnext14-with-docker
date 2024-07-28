@@ -1,0 +1,72 @@
+version: '3'
+
+services:
+  mariadb:
+    image: mariadb:10.3
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+    volumes:
+      - mariadb-data:/var/lib/mysql
+    networks:
+      - erpnext-network
+
+  redis-cache:
+    image: redis:alpine
+    volumes:
+      - redis-cache-data:/data
+    networks:
+      - erpnext-network
+
+  redis-queue:
+    image: redis:alpine
+    volumes:
+      - redis-queue-data:/data
+    networks:
+      - erpnext-network
+
+  redis-socketio:
+    image: redis:alpine
+    volumes:
+      - redis-socketio-data:/data
+    networks:
+      - erpnext-network
+
+  backend:
+    image: frappe/erpnext-worker:edge
+    environment:
+      - MARIADB_HOST=mariadb
+      - REDIS_CACHE=redis-cache:6379
+      - REDIS_QUEUE=redis-queue:6379
+      - REDIS_SOCKETIO=redis-socketio:6379
+      - SOCKETIO_PORT=9000
+    networks:
+      - erpnext-network
+    volumes:
+      - sites-vol:/home/frappe/frappe-bench/sites
+      - assets-vol:/home/frappe/frappe-bench/sites/assets
+
+  frontend:
+    image: frappe/erpnext-nginx:edge
+    environment:
+      - BACKEND=mariadb
+    networks:
+      - erpnext-network
+    ports:
+      - "80:80"
+    volumes:
+      - sites-vol:/home/frappe/frappe-bench/sites
+      - assets-vol:/home/frappe/frappe-bench/sites/assets
+
+volumes:
+  mariadb-data:
+  redis-cache-data:
+  redis-queue-data:
+  redis-socketio-data:
+  sites-vol:
+  assets-vol:
+
+networks:
+  erpnext-network:
